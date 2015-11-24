@@ -6,9 +6,6 @@ import sys
 import re
 
 
-stories_file = sys.argv[1]
-
-
 # it is common sense to add ten percent more to your programming task time estimates
 # increase it for wider safety magin
 common_sense_multiplier = 1.1
@@ -125,6 +122,7 @@ def consume(lines, offset):
     return (est_attributes, i)
 
 def process(estimate_file_path):
+    print(estimate_file_path)
     estimate_lines = []
     with open(estimate_file_path) as ifstream:
         estimate_lines = ifstream.read().splitlines()
@@ -185,7 +183,7 @@ def estimateTasksTime(story_files):
     e_preprocessed_lines, e_expected, e_optimistic, e_pessimistic, e_average, e_left_expected, e_left_optimistic, e_left_pessimistic, e_left_average, e_work_in_progress, e_done_after, e_tasks_in_progress, e_tasks_done = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
     tasks_per_file = []
     for sf in story_files:
-        preprocessed_lines, expected, optimistic, pessimistic, average, left_expected, left_optimistic, left_pessimistic, left_average, work_in_progress, done_after, tasks_in_progress, tasks_done = process(stories_file)
+        preprocessed_lines, expected, optimistic, pessimistic, average, left_expected, left_optimistic, left_pessimistic, left_average, work_in_progress, done_after, tasks_in_progress, tasks_done = process(sf)
         tasks_per_file.append((sf, len(preprocessed_lines)))
         e_preprocessed_lines += len(preprocessed_lines)
         e_expected += expected
