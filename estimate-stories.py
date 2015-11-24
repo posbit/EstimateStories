@@ -7,7 +7,6 @@ import re
 
 
 estimate_file_path = sys.argv[1]
-print('estimates taken from: {0}'.format(estimate_file_path))
 
 estimate_lines = []
 with open(estimate_file_path) as ifstream:
@@ -15,7 +14,7 @@ with open(estimate_file_path) as ifstream:
 
 
 def isMeaningful(line):
-    return (line.startswith('@Subject: ') or line.startswith('@EstOpti: ') or line.startswith('@EstReal: ') or line.startswith('@EstPess: '))
+    return (line.startswith('@Subject: ') or line.startswith('@EstOpti: ') or line.startswith('@EstReal: ') or line.startswith('@EstPess: ') or line.startswith('@DoneAfter: ') or line.startswith('@WorkInProgress: '))
 
 estimate_meaningful_lines = [line for line in estimate_lines if isMeaningful(line)]
 
@@ -33,6 +32,8 @@ def consume(lines, offset):
         'optimistic': None,
         'realistic': None,
         'pessimistic': None,
+        'done_after': None,
+        'work_in_progress': None,
     }
 
     tokens = [lines[offset]]
@@ -65,8 +66,12 @@ def consume(lines, offset):
                 est_attributes['pessimistic'] = t[len('@EstPess: '):]
             else:
                 raise Exception('bad ordering (inside)')
+        if t.startswith('@DoneAfter: '):
+            est_attributes['done_after'] = t[len('@DoneAfter: '):]
+        if t.startswith('@WorkInProgress: '):
+            est_attributes['work_in_progress'] = t[len('@WorkInProgress: '):]
 
-    est_keys = ['optimistic', 'pessimistic', 'realistic']
+    est_keys = ['optimistic', 'pessimistic', 'realistic', 'done_after', 'work_in_progress']
     for k in est_keys:
         if est_attributes[k] is not None:
             est_attributes[k] = [p for p in est_attributes[k].split() if p.strip()]
@@ -126,11 +131,37 @@ optimistic = 0
 expected = 0
 average = 0
 pessimistic = 0
+left_optimistic = 0
+left_expected = 0
+left_average = 0
+left_pessimistic = 0
+tasks_in_progress = 0
+tasks_done = 0
+work_in_progress = 0
+done_after = 0
 for est in preprocessed_lines:
     optimistic += est['optimistic_hours']
     expected += est['realistic_hours']
     pessimistic += est['pessimistic_hours']
     average += ((est['optimistic_hours'] + est['pessimistic_hours']) / 2)
+
+    if not est['done_after'] and not est['work_in_progress']:
+        left_optimistic += est['optimistic_hours']
+        left_expected += est['realistic_hours']
+        left_pessimistic += est['pessimistic_hours']
+        left_average += ((est['optimistic_hours'] + est['pessimistic_hours']) / 2)
+    if not est['done_after'] and est['work_in_progress']:
+        left_optimistic += (est['optimistic_hours'] - est['work_in_progress_hours'])
+        left_expected += (est['realistic_hours'] - est['work_in_progress_hours'])
+        left_pessimistic += (est['pessimistic_hours'] - est['work_in_progress_hours'])
+        left_average += ((est['optimistic_hours'] + est['pessimistic_hours'] - (est['work_in_progress_hours'] / 2)) / 2)
+
+    if est['done_after']:
+        tasks_done += 1
+        done_after += est['done_after_hours']
+    if est['work_in_progress']:
+        tasks_in_progress += 1
+        work_in_progress += est['work_in_progress_hours']
 
 
 # it is common sense to add ten percent more to your programming task time estimates
@@ -143,12 +174,33 @@ average = round((average * common_sense_multiplier), 4)
 pessimistic = round((pessimistic * (common_sense_multiplier + 0.1)), 4)  # add ten percent to pessimistic estimate
 
 
-# print('DETAILS:')
-# for est in preprocessed_lines:
-#     print('  {0}: {1}h / {2}h / {3}h'.format(est['subject'], est['realistic_hours'], est['optimistic_hours'], est['pessimistic_hours']))
+# make it 8 to get work-days schedule
+# make it 24 to get unrealistic schedule
+HOURS_IN_A_DAY = 8
+ROUND_TO = 2
 
-print('SUMMARY:')
-print('  expected:    {0} hours ({1} days)'.format(expected, (round((expected / 24), 2))))
-print('  optimistic:  {0} hours ({1} days)'.format(optimistic, (round((optimistic / 24), 2))))
-print('  pessimistic: {0} hours ({1} days)'.format(pessimistic, (round((pessimistic / 24), 2))))
-print('  average:     {0} hours ({1} days)'.format(average, (round((average / 24), 2))))
+def toDays(hours):
+    r = round((hours / HOURS_IN_A_DAY), ROUND_TO)
+    if ROUND_TO == 0:
+        r = int(r)
+    return r
+
+print('SUMMARY: {0}'.format(estimate_file_path))
+print('  tasks:       {0} task(s)'.format(len(preprocessed_lines)))
+print()
+print('  ESTIMATED:')
+print('    expected:    {0} hours ({1} days)'.format(expected, toDays(expected)))
+print('    optimistic:  {0} hours ({1} days)'.format(optimistic, toDays(optimistic)))
+print('    pessimistic: {0} hours ({1} days)'.format(pessimistic, toDays(pessimistic)))
+print('    average:     {0} hours ({1} days)'.format(average, toDays(average)))
+print()
+print('  LEFT:')
+print('    expected:    {0} hours ({1} days)'.format(left_expected, toDays(left_expected)))
+print('    optimistic:  {0} hours ({1} days)'.format(left_optimistic, toDays(left_optimistic)))
+print('    pessimistic: {0} hours ({1} days)'.format(left_pessimistic, toDays(left_pessimistic)))
+print('    average:     {0} hours ({1} days)'.format(left_average, toDays(left_average)))
+print()
+print('  FINISHED:')
+print('    not started:      {0} task(s)'.format((len(preprocessed_lines) - tasks_in_progress - tasks_done)))
+print('    work in progress: {0} task(s) - {1} hours ({2} days)'.format(tasks_in_progress, work_in_progress, toDays(work_in_progress)))
+print('    finished:         {0} task(s) - {1} hours ({2} days)'.format(tasks_done, done_after, toDays(done_after)))
