@@ -6,18 +6,24 @@ import sys
 import re
 
 
-estimate_file_path = sys.argv[1]
+stories_file = sys.argv[1]
 
-estimate_lines = []
-with open(estimate_file_path) as ifstream:
-    estimate_lines = ifstream.read().splitlines()
+
+# it is common sense to add ten percent more to your programming task time estimates
+# increase it for wider safety magin
+common_sense_multiplier = 1.1
+
+pessimistic_coefficient = 0.1
+
+# make it 8 to get work-days schedule
+# make it 24 to get unrealistic schedule
+HOURS_IN_A_DAY = 8
+
+ROUND_TO = 2
 
 
 def isMeaningful(line):
     return (line.startswith('@Subject: ') or line.startswith('@EstOpti: ') or line.startswith('@EstReal: ') or line.startswith('@EstPess: ') or line.startswith('@DoneAfter: ') or line.startswith('@WorkInProgress: '))
-
-estimate_meaningful_lines = [line for line in estimate_lines if isMeaningful(line)]
-
 
 def consume(lines, offset):
     if len(lines) < offset:
@@ -118,66 +124,63 @@ def consume(lines, offset):
 
     return (est_attributes, i)
 
+def process(estimate_file_path):
+    estimate_lines = []
+    with open(estimate_file_path) as ifstream:
+        estimate_lines = ifstream.read().splitlines()
 
-preprocessed_lines = []
-i = 0
-while i < len(estimate_meaningful_lines):
-    estimate, inc = consume(estimate_meaningful_lines, i)
-    preprocessed_lines.append(estimate)
-    i += inc
+    estimate_meaningful_lines = [line for line in estimate_lines if isMeaningful(line)]
 
+    preprocessed_lines = []
+    i = 0
+    while i < len(estimate_meaningful_lines):
+        estimate, inc = consume(estimate_meaningful_lines, i)
+        preprocessed_lines.append(estimate)
+        i += inc
 
-optimistic = 0
-expected = 0
-average = 0
-pessimistic = 0
-left_optimistic = 0
-left_expected = 0
-left_average = 0
-left_pessimistic = 0
-tasks_in_progress = 0
-tasks_done = 0
-work_in_progress = 0
-done_after = 0
-for est in preprocessed_lines:
-    optimistic += est['optimistic_hours']
-    expected += est['realistic_hours']
-    pessimistic += est['pessimistic_hours']
-    average += ((est['optimistic_hours'] + est['pessimistic_hours']) / 2)
+    optimistic = 0
+    expected = 0
+    average = 0
+    pessimistic = 0
+    left_optimistic = 0
+    left_expected = 0
+    left_average = 0
+    left_pessimistic = 0
+    tasks_in_progress = 0
+    tasks_done = 0
+    work_in_progress = 0
+    done_after = 0
+    for est in preprocessed_lines:
+        optimistic += est['optimistic_hours']
+        expected += est['realistic_hours']
+        pessimistic += est['pessimistic_hours']
+        average += ((est['optimistic_hours'] + est['pessimistic_hours']) / 2)
 
-    if not est['done_after'] and not est['work_in_progress']:
-        left_optimistic += est['optimistic_hours']
-        left_expected += est['realistic_hours']
-        left_pessimistic += est['pessimistic_hours']
-        left_average += ((est['optimistic_hours'] + est['pessimistic_hours']) / 2)
-    if not est['done_after'] and est['work_in_progress']:
-        left_optimistic += (est['optimistic_hours'] - est['work_in_progress_hours'])
-        left_expected += (est['realistic_hours'] - est['work_in_progress_hours'])
-        left_pessimistic += (est['pessimistic_hours'] - est['work_in_progress_hours'])
-        left_average += ((est['optimistic_hours'] + est['pessimistic_hours'] - (est['work_in_progress_hours'] / 2)) / 2)
+        if not est['done_after'] and not est['work_in_progress']:
+            left_optimistic += est['optimistic_hours']
+            left_expected += est['realistic_hours']
+            left_pessimistic += est['pessimistic_hours']
+            left_average += ((est['optimistic_hours'] + est['pessimistic_hours']) / 2)
+        if not est['done_after'] and est['work_in_progress']:
+            left_optimistic += (est['optimistic_hours'] - est['work_in_progress_hours'])
+            left_expected += (est['realistic_hours'] - est['work_in_progress_hours'])
+            left_pessimistic += (est['pessimistic_hours'] - est['work_in_progress_hours'])
+            left_average += ((est['optimistic_hours'] + est['pessimistic_hours'] - (est['work_in_progress_hours'] / 2)) / 2)
 
-    if est['done_after']:
-        tasks_done += 1
-        done_after += est['done_after_hours']
-    if est['work_in_progress']:
-        tasks_in_progress += 1
-        work_in_progress += est['work_in_progress_hours']
+        if est['done_after']:
+            tasks_done += 1
+            done_after += est['done_after_hours']
+        if est['work_in_progress']:
+            tasks_in_progress += 1
+            work_in_progress += est['work_in_progress_hours']
 
+    optimistic = round((optimistic * (common_sense_multiplier + pessimistic_coefficient)), 4)  # take pessimistic coefficient into account for optimistic estimate
+    expected = round((expected * common_sense_multiplier), 4)
+    average = round((average * common_sense_multiplier), 4)
+    pessimistic = round((pessimistic * (common_sense_multiplier + pessimistic_coefficient)), 4)  # take pessimistic coefficient into account for pessimistic estimate
 
-# it is common sense to add ten percent more to your programming task time estimates
-# increase it for wider safety magin
-common_sense_multiplier = 1.1
+    return (preprocessed_lines, expected, optimistic, pessimistic, average, left_expected, left_optimistic, left_pessimistic, left_average, work_in_progress, done_after, tasks_in_progress, tasks_done)
 
-optimistic = round((optimistic * (common_sense_multiplier + 0.1)), 4)  # add ten percent to optimistic estimate
-expected = round((expected * common_sense_multiplier), 4)
-average = round((average * common_sense_multiplier), 4)
-pessimistic = round((pessimistic * (common_sense_multiplier + 0.1)), 4)  # add ten percent to pessimistic estimate
-
-
-# make it 8 to get work-days schedule
-# make it 24 to get unrealistic schedule
-HOURS_IN_A_DAY = 8
-ROUND_TO = 2
 
 def toDays(hours):
     r = round((hours / HOURS_IN_A_DAY), ROUND_TO)
@@ -185,7 +188,9 @@ def toDays(hours):
         r = int(r)
     return r
 
-print('SUMMARY: {0}'.format(estimate_file_path))
+preprocessed_lines, expected, optimistic, pessimistic, average, left_expected, left_optimistic, left_pessimistic, left_average, work_in_progress, done_after, tasks_in_progress, tasks_done = process(stories_file)
+
+print('SUMMARY: {0}'.format(stories_file))
 print('  tasks:       {0} task(s)'.format(len(preprocessed_lines)))
 print()
 print('  ESTIMATED:')
