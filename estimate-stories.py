@@ -181,6 +181,26 @@ def process(estimate_file_path):
 
     return (preprocessed_lines, expected, optimistic, pessimistic, average, left_expected, left_optimistic, left_pessimistic, left_average, work_in_progress, done_after, tasks_in_progress, tasks_done)
 
+def estimateTasksTime(story_files):
+    e_preprocessed_lines, e_expected, e_optimistic, e_pessimistic, e_average, e_left_expected, e_left_optimistic, e_left_pessimistic, e_left_average, e_work_in_progress, e_done_after, e_tasks_in_progress, e_tasks_done = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    tasks_per_file = []
+    for sf in story_files:
+        preprocessed_lines, expected, optimistic, pessimistic, average, left_expected, left_optimistic, left_pessimistic, left_average, work_in_progress, done_after, tasks_in_progress, tasks_done = process(stories_file)
+        tasks_per_file.append((sf, len(preprocessed_lines)))
+        e_preprocessed_lines += len(preprocessed_lines)
+        e_expected += expected
+        e_optimistic += optimistic
+        e_pessimistic += pessimistic
+        e_average += average
+        e_left_expected += left_expected
+        e_left_optimistic += left_optimistic
+        e_left_pessimistic += left_pessimistic
+        e_left_average += left_average
+        e_work_in_progress += work_in_progress
+        e_done_after += done_after
+        e_tasks_in_progress += tasks_in_progress
+        e_tasks_done += tasks_done
+    return tasks_per_file, e_preprocessed_lines, e_expected, e_optimistic, e_pessimistic, e_average, e_left_expected, e_left_optimistic, e_left_pessimistic, e_left_average, e_work_in_progress, e_done_after, e_tasks_in_progress, e_tasks_done
 
 def toDays(hours):
     r = round((hours / HOURS_IN_A_DAY), ROUND_TO)
@@ -188,10 +208,12 @@ def toDays(hours):
         r = int(r)
     return r
 
-preprocessed_lines, expected, optimistic, pessimistic, average, left_expected, left_optimistic, left_pessimistic, left_average, work_in_progress, done_after, tasks_in_progress, tasks_done = process(stories_file)
+tasks_per_file, preprocessed_lines, expected, optimistic, pessimistic, average, left_expected, left_optimistic, left_pessimistic, left_average, work_in_progress, done_after, tasks_in_progress, tasks_done = estimateTasksTime(sys.argv[1:])
 
-print('SUMMARY: {0}'.format(stories_file))
-print('  tasks:       {0} task(s)'.format(len(preprocessed_lines)))
+print('SUMMARY')
+print('  TASKS:')
+for tasks_file, tasks_no in tasks_per_file:
+    print('    {0}: {1} task(s)'.format(tasks_file, tasks_no))
 print()
 print('  ESTIMATED:')
 print('    expected:    {0} hours ({1} days)'.format(expected, toDays(expected)))
@@ -206,6 +228,6 @@ print('    pessimistic: {0} hours ({1} days)'.format(left_pessimistic, toDays(le
 print('    average:     {0} hours ({1} days)'.format(left_average, toDays(left_average)))
 print()
 print('  FINISHED:')
-print('    not started:      {0} task(s)'.format((len(preprocessed_lines) - tasks_in_progress - tasks_done)))
+print('    not started:      {0} task(s)'.format((preprocessed_lines - tasks_in_progress - tasks_done)))
 print('    work in progress: {0} task(s) - {1} hours ({2} days)'.format(tasks_in_progress, work_in_progress, toDays(work_in_progress)))
 print('    finished:         {0} task(s) - {1} hours ({2} days)'.format(tasks_done, done_after, toDays(done_after)))
