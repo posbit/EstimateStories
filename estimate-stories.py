@@ -122,7 +122,6 @@ def consume(lines, offset):
     return (est_attributes, i)
 
 def process(estimate_file_path):
-    print(estimate_file_path)
     estimate_lines = []
     with open(estimate_file_path) as ifstream:
         estimate_lines = ifstream.read().splitlines()
@@ -206,26 +205,35 @@ def toDays(hours):
         r = int(r)
     return r
 
-tasks_per_file, preprocessed_lines, expected, optimistic, pessimistic, average, left_expected, left_optimistic, left_pessimistic, left_average, work_in_progress, done_after, tasks_in_progress, tasks_done = estimateTasksTime(sys.argv[1:])
+if len(sys.argv) < 2:
+    print('fatal: missing operands')
+    exit(1)
 
-print('SUMMARY')
-print('  TASKS:')
-for tasks_file, tasks_no in tasks_per_file:
-    print('    {0}: {1} task(s)'.format(tasks_file, tasks_no))
-print()
-print('  ESTIMATED:')
-print('    expected:    {0} hours ({1} days)'.format(expected, toDays(expected)))
-print('    optimistic:  {0} hours ({1} days)'.format(optimistic, toDays(optimistic)))
-print('    pessimistic: {0} hours ({1} days)'.format(pessimistic, toDays(pessimistic)))
-print('    average:     {0} hours ({1} days)'.format(average, toDays(average)))
-print()
-print('  LEFT:')
-print('    expected:    {0} hours ({1} days)'.format(left_expected, toDays(left_expected)))
-print('    optimistic:  {0} hours ({1} days)'.format(left_optimistic, toDays(left_optimistic)))
-print('    pessimistic: {0} hours ({1} days)'.format(left_pessimistic, toDays(left_pessimistic)))
-print('    average:     {0} hours ({1} days)'.format(left_average, toDays(left_average)))
-print()
-print('  FINISHED:')
-print('    not started:      {0} task(s)'.format((preprocessed_lines - tasks_in_progress - tasks_done)))
-print('    work in progress: {0} task(s) - {1} hours ({2} days)'.format(tasks_in_progress, work_in_progress, toDays(work_in_progress)))
-print('    finished:         {0} task(s) - {1} hours ({2} days)'.format(tasks_done, done_after, toDays(done_after)))
+mode = sys.argv[1]
+if mode == 'start':
+    print('starting work on task: {0}'.format('?'))
+elif mode == 'stop':
+    print('stopping work on task: {0}'.format('?'))
+else:
+    tasks_per_file, preprocessed_lines, expected, optimistic, pessimistic, average, left_expected, left_optimistic, left_pessimistic, left_average, work_in_progress, done_after, tasks_in_progress, tasks_done = estimateTasksTime(sys.argv[1:])
+    print('SUMMARY')
+    print('  TASKS:')
+    for tasks_file, tasks_no in tasks_per_file:
+        print('    {0}: {1} task(s)'.format(tasks_file, tasks_no))
+    print()
+    print('  ESTIMATED:')
+    print('    expected:    {0} hours ({1} days)'.format(expected, toDays(expected)))
+    print('    optimistic:  {0} hours ({1} days)'.format(optimistic, toDays(optimistic)))
+    print('    pessimistic: {0} hours ({1} days)'.format(pessimistic, toDays(pessimistic)))
+    print('    average:     {0} hours ({1} days)'.format(average, toDays(average)))
+    print()
+    print('  LEFT:')
+    print('    expected:    {0} hours ({1} days)'.format(left_expected, toDays(left_expected)))
+    print('    optimistic:  {0} hours ({1} days)'.format(left_optimistic, toDays(left_optimistic)))
+    print('    pessimistic: {0} hours ({1} days)'.format(left_pessimistic, toDays(left_pessimistic)))
+    print('    average:     {0} hours ({1} days)'.format(left_average, toDays(left_average)))
+    print()
+    print('  FINISHED:')
+    print('    not started:      {0} task(s)'.format((preprocessed_lines - tasks_in_progress - tasks_done)))
+    print('    work in progress: {0} task(s) - {1} hours ({2} days)'.format(tasks_in_progress, work_in_progress, toDays(work_in_progress)))
+    print('    finished:         {0} task(s) - {1} hours ({2} days)'.format(tasks_done, done_after, toDays(done_after)))
